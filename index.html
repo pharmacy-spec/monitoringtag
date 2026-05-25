@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TAG MONITORING - V.02</title>
+    <title>TAG MONITORING - FILTER 5 KOLOM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Space Grotesk', system-ui, sans-serif; }
@@ -13,7 +14,7 @@
         .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background: #64748b; border-radius: 3px; }
         .toast-message { z-index: 9999; }
-        .glass-card { background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .glass-card { background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: visible !important; }
         .photo-thumbnail { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0; cursor: pointer; transition: all 0.3s ease; }
         .photo-thumbnail:hover { transform: scale(1.5); box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 10; position: relative; }
         .camera-container { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 16px; text-align: center; background: #f8fafc; margin-bottom: 12px; }
@@ -25,7 +26,7 @@
         .main-score-card:hover { transform: none; }
         .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .table-container { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+        .table-container { overflow-x: auto; overflow-y: auto; max-height: 500px; }
         .table-container thead { position: sticky; top: 0; background: white; z-index: 5; }
         .break-word { word-break: break-word; white-space: normal; overflow-wrap: break-word; }
         .hidden-page { display: none !important; }
@@ -53,22 +54,33 @@
         .last-sync { font-size: 10px; color: #94a3b8; text-align: center; margin-top: 8px; }
         .hidden { display: none !important; }
         
-        /* Custom dropdown filter style */
-        .filter-dropdown { position: relative; display: inline-block; width: 100%; }
-        .filter-dropdown-btn { width: 100%; padding: 10px 12px; background: white; border: 2px solid #e2e8f0; border-radius: 10px; text-align: left; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .filter-dropdown-btn:hover { border-color: #10b981; }
-        .filter-dropdown-content { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; z-index: 50; display: none; margin-top: 4px; }
+        /* Custom dropdown filter style - FIXED biar ga ketutup */
+        .filter-dropdown { position: relative; width: 100%; z-index: 100; }
+        .filter-dropdown-btn { width: 100%; padding: 10px 12px; background: white; border: 2px solid #e2e8f0; border-radius: 10px; text-align: left; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; }
+        .filter-dropdown-btn:hover { border-color: #10b981; background: #f0fdf4; }
+        .filter-dropdown-content { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 250px; overflow-y: auto; z-index: 9999 !important; display: none; margin-top: 4px; }
         .filter-dropdown-content.show { display: block; }
         .filter-option { padding: 8px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
         .filter-option:hover { background: #f8fafc; }
         .filter-option input { width: 16px; height: 16px; cursor: pointer; }
         .filter-option label { cursor: pointer; flex: 1; }
-        .filter-badge { display: inline-block; background: #10b981; color: white; font-size: 10px; border-radius: 20px; padding: 2px 8px; margin-left: 8px; }
+        
+        /* Filter row 5 kolom */
+        .filter-row-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px; position: relative; z-index: 100; }
+        .filter-item { width: 100%; position: relative; }
+        .filter-label { font-weight: 700; font-size: 11px; text-transform: uppercase; margin-bottom: 6px; color: #475569; letter-spacing: 0.5px; }
+        
+        @media (max-width: 1024px) {
+            .filter-row-5 { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        }
+        @media (max-width: 640px) {
+            .filter-row-5 { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body class="h-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-900">
     <div id="app" class="h-full w-full overflow-auto scrollbar-thin">
-        <!-- LOGIN SCREEN (sama seperti sebelumnya, dipotong biar ga kepanjangan) -->
+        <!-- LOGIN SCREEN -->
         <div id="login-screen" class="min-h-full flex items-center justify-center p-4">
             <div class="w-full max-w-md">
                 <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
@@ -169,30 +181,25 @@
                     </div>
                 </div>
 
-                <!-- DETAIL PAGE dengan FILTER DROPDOWN CHECKBOX -->
+                <!-- DETAIL PAGE dengan FILTER 5 KOLOM + TABEL -->
                 <div id="page-detail" class="page hidden space-y-4">
                     <div class="glass-card rounded-xl p-5">
                         <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
                             <h2 id="detail-title" class="text-2xl font-black uppercase">🔴 RED TAG DETAIL</h2>
-                            <button onclick="window.exportDetailToExcel()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs font-bold uppercase hover:from-emerald-600 hover:to-teal-600 transition">📎 EXPORT EXCEL</button>
+                            <button onclick="window.exportDetailToExcel()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-xs font-bold uppercase hover:from-emerald-600 hover:to-teal-600 transition shadow-lg">📎 EXPORT EXCEL</button>
                         </div>
                         
-                        <!-- ROW FILTER TANGGAL & STATUS DROPDOWN -->
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-                            <div><label class="block text-xs font-bold uppercase mb-1">DARI TANGGAL</label><input type="date" id="detail-date-from" class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-white/50 backdrop-blur-sm focus:border-emerald-500 focus:outline-none transition text-sm"></div>
-                            <div><label class="block text-xs font-bold uppercase mb-1">SAMPAI TANGGAL</label><input type="date" id="detail-date-to" class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-white/50 backdrop-blur-sm focus:border-emerald-500 focus:outline-none transition text-sm"></div>
-                            <div id="detail-status-container"><label class="block text-xs font-bold uppercase mb-1">STATUS (DROPDOWN)</label><select id="detail-status" class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-white/50 backdrop-blur-sm focus:border-emerald-500 focus:outline-none transition text-sm uppercase"><option value="">SEMUA STATUS</option><option value="OPEN">🔴 OPEN</option><option value="ON PROGRESS">🟡 ON PROGRESS</option><option value="CLOSED">✅ CLOSED</option></select></div>
-                        </div>
+                        <!-- FILTER 5 KOLOM -->
+                        <div id="filter-row-container" class="filter-row-5"></div>
                         
-                        <!-- FILTER CHECKBOX DALAM BENTUK DROPDOWN -->
-                        <div id="filter-checkbox-area" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4"></div>
-                        
-                        <div class="flex gap-3">
-                            <button onclick="window.applyDetailFilter()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-sm font-bold uppercase hover:from-emerald-600 hover:to-teal-600 transition shadow-lg shadow-emerald-500/30">🔍 TERAPKAN FILTER</button>
-                            <button onclick="window.resetDetailFilter()" class="px-5 py-2.5 bg-gradient-to-r from-slate-500 to-slate-600 text-white rounded-lg text-sm font-bold uppercase hover:from-slate-600 hover:to-slate-700 transition shadow-lg shadow-slate-500/30">⟲ RESET</button>
+                        <div class="flex gap-3 mt-2">
+                            <button onclick="window.applyDetailFilter()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-sm font-bold uppercase hover:from-emerald-600 hover:to-teal-600 transition shadow-lg">🔍 TERAPKAN FILTER</button>
+                            <button onclick="window.resetDetailFilter()" class="px-5 py-2.5 bg-gradient-to-r from-slate-500 to-slate-600 text-white rounded-lg text-sm font-bold uppercase hover:from-slate-600 hover:to-slate-700 transition shadow-lg">⟲ RESET SEMUA</button>
                         </div>
                     </div>
-                    <div class="glass-card rounded-xl overflow-hidden">
+                    
+                    <!-- TABEL LIST DETAIL -->
+                    <div class="glass-card rounded-xl overflow-hidden" style="overflow: visible !important;">
                         <div class="table-container">
                             <table class="w-full text-sm">
                                 <thead class="bg-slate-50/50 sticky top-0"><tr id="detail-table-header"><tr></thead>
@@ -228,13 +235,7 @@
             let isLoggingIn = false;
             let realtimeSubscription = null;
             
-            // State untuk filter checkbox
-            let filterSelections = {
-                machine: [],
-                building: [],
-                category: [],
-                status: []
-            };
+            let filterSelections = { machine: [], building: [], category: [] };
 
             function isCacheValid(key){ return cache[key] && (Date.now() - cache[key].timestamp) < CACHE_TTL; }
             function updateCache(key,data){ cache[key]={data,timestamp:Date.now()}; }
@@ -272,11 +273,11 @@
             function updateDashboardCardsWithData(filtered){
                 const allTotal = filtered.length, allOpen = filtered.filter(t=>t.status==='OPEN').length, allProgress = filtered.filter(t=>t.status==='ON PROGRESS').length, allClosed = filtered.filter(t=>t.status==='CLOSED').length;
                 const allPercent = allTotal ? Math.round((allClosed / allTotal)*100) : 0;
-                const allEl = document.getElementById('all-total'); if(allEl) allEl.textContent = allTotal;
-                const openEl = document.getElementById('all-open'); if(openEl) openEl.textContent = allOpen;
-                const progEl = document.getElementById('all-progress'); if(progEl) progEl.textContent = allProgress;
-                const closedEl = document.getElementById('all-closed'); if(closedEl) closedEl.textContent = allClosed;
-                const percentEl = document.getElementById('all-percent'); if(percentEl) percentEl.textContent = allPercent+'%';
+                document.getElementById('all-total').textContent = allTotal;
+                document.getElementById('all-open').textContent = allOpen;
+                document.getElementById('all-progress').textContent = allProgress;
+                document.getElementById('all-closed').textContent = allClosed;
+                document.getElementById('all-percent').textContent = allPercent+'%';
                 
                 ['RED','WHITE','BLUE','YELLOW'].forEach(type=>{
                     const tags = filtered.filter(t=>t.tag_type===type);
@@ -337,44 +338,45 @@
                 container.innerHTML=entries.map(([b,s])=>`<div class="space-y-2"><div class="flex justify-between"><span>🏢 ${b}</span><span>${s.total}</span></div><div><div class="flex justify-between text-xs"><span>🔵 OPEN:${s.open}</span><span>✅ CLOSED:${s.closed}</span></div><div class="h-6 bg-slate-200 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-blue-500 to-yellow-500" style="width:${((s.blue+s.yellow)/maxBlue)*100}%"></div></div><div class="text-xs flex gap-2"><span>🔵 ${s.blue}</span><span>🟡 ${s.yellow}</span></div></div></div>`).join('');
             }
             
-            // Fungsi untuk membuat dropdown checkbox custom
-            function createFilterDropdown(id, label, items, type, selectedValues) {
-                const container = document.createElement('div');
-                container.className = 'filter-dropdown';
-                const btnId = `${id}_btn`;
+            function createFilterDropdown(id, label, items, type, selectedValues, isYellowCategory=false) {
+                const div = document.createElement('div');
+                div.className = 'filter-item';
                 const contentId = `${id}_content`;
-                
+                const btnId = `${id}_btn`;
                 let selectedText = selectedValues.length > 0 ? selectedValues.length + ' terpilih' : 'Semua';
+                let optionsHtml = items.map(item => {
+                    let displayItem = isYellowCategory ? item.replace(/_/g, ' ') : item;
+                    return `<div class="filter-option" onclick="window.toggleCheckbox('${id}_${item.replace(/\s/g, '_')}', '${type}', '${item}')">
+                        <input type="checkbox" id="${id}_${item.replace(/\s/g, '_')}" ${selectedValues.includes(item) ? 'checked' : ''}>
+                        <label>${displayItem}</label>
+                    </div>`;
+                }).join('');
                 
-                container.innerHTML = `
-                    <label class="block text-xs font-bold uppercase mb-1">${label}</label>
-                    <div class="filter-dropdown-btn" onclick="window.toggleDropdown('${contentId}')">
-                        <span>${label}</span>
-                        <span id="${btnId}">${selectedText} ▼</span>
-                    </div>
-                    <div id="${contentId}" class="filter-dropdown-content">
-                        <div class="filter-option" onclick="window.toggleCheckbox('${id}_all', '${type}', '')">
-                            <input type="checkbox" id="${id}_all" ${selectedValues.length === 0 ? 'checked' : ''}>
-                            <label>SEMUA</label>
+                div.innerHTML = `
+                    <div class="filter-label">${label}</div>
+                    <div class="filter-dropdown">
+                        <div class="filter-dropdown-btn" onclick="window.toggleDropdown('${contentId}')">
+                            <span>${label.split(' ').slice(1).join(' ') || label}</span>
+                            <span id="${btnId}">${selectedText} ▼</span>
                         </div>
-                        ${items.map(item => `
-                            <div class="filter-option" onclick="window.toggleCheckbox('${id}_${item.replace(/\s/g, '_')}', '${type}', '${item}')">
-                                <input type="checkbox" id="${id}_${item.replace(/\s/g, '_')}" ${selectedValues.includes(item) ? 'checked' : ''}>
-                                <label>${item}</label>
+                        <div id="${contentId}" class="filter-dropdown-content">
+                            <div class="filter-option" onclick="window.toggleCheckbox('${id}_all', '${type}', '')">
+                                <input type="checkbox" id="${id}_all" ${selectedValues.length === 0 ? 'checked' : ''}>
+                                <label>SEMUA</label>
                             </div>
-                        `).join('')}
+                            ${optionsHtml}
+                        </div>
                     </div>
                 `;
-                return container;
+                return div;
             }
             
             window.toggleDropdown = function(contentId) {
-                const el = document.getElementById(contentId);
-                if(el) el.classList.toggle('show');
-                // Close others
                 document.querySelectorAll('.filter-dropdown-content').forEach(c => {
                     if(c.id !== contentId) c.classList.remove('show');
                 });
+                const el = document.getElementById(contentId);
+                if(el) el.classList.toggle('show');
             };
             
             window.toggleCheckbox = function(checkboxId, filterType, value) {
@@ -382,21 +384,16 @@
                 if(!checkbox) return;
                 
                 if(value === '') {
-                    // Handle "SEMUA" - clear all selections for this filter type
                     if(checkbox.checked) {
-                        // Clear all other checkboxes
                         filterSelections[filterType] = [];
-                        // Update UI
                         document.querySelectorAll(`[id^="${filterType}_"]`).forEach(cb => {
                             if(cb.id !== checkboxId) cb.checked = false;
                         });
                     }
                 } else {
-                    // Toggle specific value
                     const index = filterSelections[filterType].indexOf(value);
                     if(checkbox.checked) {
                         if(index === -1) filterSelections[filterType].push(value);
-                        // Uncheck "SEMUA" if exists
                         const allCheckbox = document.getElementById(`${filterType}_all`);
                         if(allCheckbox) allCheckbox.checked = false;
                     } else {
@@ -404,92 +401,81 @@
                     }
                 }
                 
-                // Update button text
                 const btnSpan = document.getElementById(`${filterType}_btn`);
                 if(btnSpan) {
                     const count = filterSelections[filterType].length;
                     btnSpan.innerHTML = count > 0 ? `${count} terpilih ▼` : 'Semua ▼';
                 }
                 
-                // Auto apply filter
                 applyDetailFilter();
             };
             
-            function renderFilterCheckboxes() {
-                const area = document.getElementById('filter-checkbox-area');
-                if(!area) return;
+            function renderFilterRow() {
+                const container = document.getElementById('filter-row-container');
+                if(!container) return;
+                container.innerHTML = '';
                 
-                area.innerHTML = '';
+                // Kolom 1: Tanggal Dari
+                const dateFromDiv = document.createElement('div');
+                dateFromDiv.className = 'filter-item';
+                dateFromDiv.innerHTML = `<div class="filter-label">📅 DARI TANGGAL</div><input type="date" id="detail-date-from" class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-white focus:border-emerald-500 focus:outline-none transition text-sm">`;
+                container.appendChild(dateFromDiv);
                 
+                // Kolom 2: Tanggal Sampai
+                const dateToDiv = document.createElement('div');
+                dateToDiv.className = 'filter-item';
+                dateToDiv.innerHTML = `<div class="filter-label">📅 SAMPAI TANGGAL</div><input type="date" id="detail-date-to" class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-white focus:border-emerald-500 focus:outline-none transition text-sm">`;
+                container.appendChild(dateToDiv);
+                
+                // Kolom 3: Status Dropdown
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'filter-item';
+                statusDiv.innerHTML = `
+                    <div class="filter-label">🔘 STATUS</div>
+                    <select id="detail-status" class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-white focus:border-emerald-500 focus:outline-none transition text-sm uppercase">
+                        <option value="">SEMUA STATUS</option>
+                        <option value="OPEN">🔴 OPEN</option>
+                        <option value="ON PROGRESS">🟡 ON PROGRESS</option>
+                        <option value="CLOSED">✅ CLOSED</option>
+                    </select>
+                `;
+                container.appendChild(statusDiv);
+                
+                // Kolom 4: Mesin atau Bangunan (checkbox dropdown)
                 if(currentDetailTagType === 'RED') {
-                    // Filter MESIN
                     const machinesList = [...new Set(allData.filter(t => t.tag_type === 'RED').map(t => t.machine).filter(Boolean))].sort();
                     if(machinesList.length > 0) {
-                        area.appendChild(createFilterDropdown('filter_machine', '🏭 MESIN', machinesList, 'machine', filterSelections.machine));
+                        container.appendChild(createFilterDropdown('filter_machine', '🏭 MESIN', machinesList, 'machine', filterSelections.machine));
+                    } else {
+                        const dummyDiv = document.createElement('div');
+                        dummyDiv.className = 'filter-item';
+                        dummyDiv.innerHTML = `<div class="filter-label">🏭 MESIN</div><div class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-400 text-sm">Tidak ada data</div>`;
+                        container.appendChild(dummyDiv);
                     }
-                    // Filter KATEGORI
-                    const categoriesList = [...new Set(allData.filter(t => t.tag_type === 'RED').map(t => t.risk).filter(Boolean))].sort();
-                    if(categoriesList.length > 0) {
-                        area.appendChild(createFilterDropdown('filter_category', '📋 KATEGORI', categoriesList, 'category', filterSelections.category));
-                    }
-                    // Filter STATUS
-                    const statusList = ['OPEN', 'ON PROGRESS', 'CLOSED'];
-                    area.appendChild(createFilterDropdown('filter_status', '🔘 STATUS', statusList, 'status', filterSelections.status));
-                } 
-                else if(currentDetailTagType === 'BLUE') {
-                    // Filter BANGUNAN
-                    const buildingsList = [...new Set(allData.filter(t => t.tag_type === 'BLUE').map(t => t.machine).filter(Boolean))].sort();
+                } else {
+                    const buildingsList = [...new Set(allData.filter(t => t.tag_type === currentDetailTagType).map(t => t.machine).filter(Boolean))].sort();
                     if(buildingsList.length > 0) {
-                        area.appendChild(createFilterDropdown('filter_building', '🏢 BANGUNAN', buildingsList, 'building', filterSelections.building));
+                        container.appendChild(createFilterDropdown('filter_building', '🏢 BANGUNAN', buildingsList, 'building', filterSelections.building));
+                    } else {
+                        const dummyDiv = document.createElement('div');
+                        dummyDiv.className = 'filter-item';
+                        dummyDiv.innerHTML = `<div class="filter-label">🏢 BANGUNAN</div><div class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-400 text-sm">Tidak ada data</div>`;
+                        container.appendChild(dummyDiv);
                     }
-                    // Filter KATEGORI
-                    const categoriesList = [...new Set(allData.filter(t => t.tag_type === 'BLUE').map(t => t.risk).filter(Boolean))].sort();
-                    if(categoriesList.length > 0) {
-                        area.appendChild(createFilterDropdown('filter_category', '📋 KATEGORI', categoriesList, 'category', filterSelections.category));
-                    }
-                    // Filter STATUS
-                    const statusList = ['OPEN', 'ON PROGRESS', 'CLOSED'];
-                    area.appendChild(createFilterDropdown('filter_status', '🔘 STATUS', statusList, 'status', filterSelections.status));
-                }
-                else if(currentDetailTagType === 'YELLOW') {
-                    // Filter BANGUNAN
-                    const buildingsList = [...new Set(allData.filter(t => t.tag_type === 'YELLOW').map(t => t.machine).filter(Boolean))].sort();
-                    if(buildingsList.length > 0) {
-                        area.appendChild(createFilterDropdown('filter_building', '🏢 BANGUNAN', buildingsList, 'building', filterSelections.building));
-                    }
-                    // Filter KATEGORI (tampilkan tanpa underscore)
-                    const categoriesList = [...new Set(allData.filter(t => t.tag_type === 'YELLOW').map(t => t.risk).filter(Boolean))].sort();
-                    const displayCategories = categoriesList.map(c => c.replace(/_/g, ' '));
-                    if(categoriesList.length > 0) {
-                        const catContainer = document.createElement('div');
-                        catContainer.className = 'filter-dropdown';
-                        catContainer.innerHTML = `
-                            <label class="block text-xs font-bold uppercase mb-1">📋 KATEGORI</label>
-                            <div class="filter-dropdown-btn" onclick="window.toggleDropdown('filter_category_content')">
-                                <span>KATEGORI</span>
-                                <span id="category_btn">${filterSelections.category.length > 0 ? filterSelections.category.length + ' terpilih ▼' : 'Semua ▼'}</span>
-                            </div>
-                            <div id="filter_category_content" class="filter-dropdown-content">
-                                <div class="filter-option" onclick="window.toggleCheckbox('category_all', 'category', '')">
-                                    <input type="checkbox" id="category_all" ${filterSelections.category.length === 0 ? 'checked' : ''}>
-                                    <label>SEMUA</label>
-                                </div>
-                                ${categoriesList.map((c, idx) => `
-                                    <div class="filter-option" onclick="window.toggleCheckbox('category_${c.replace(/\s/g, '_')}', 'category', '${c}')">
-                                        <input type="checkbox" id="category_${c.replace(/\s/g, '_')}" ${filterSelections.category.includes(c) ? 'checked' : ''}>
-                                        <label>${displayCategories[idx]}</label>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        `;
-                        area.appendChild(catContainer);
-                    }
-                    // Filter STATUS
-                    const statusList = ['OPEN', 'ON PROGRESS', 'CLOSED'];
-                    area.appendChild(createFilterDropdown('filter_status', '🔘 STATUS', statusList, 'status', filterSelections.status));
                 }
                 
-                // Close dropdown when clicking outside
+                // Kolom 5: Kategori (checkbox dropdown)
+                const categoriesList = [...new Set(allData.filter(t => t.tag_type === currentDetailTagType).map(t => t.risk).filter(Boolean))].sort();
+                if(categoriesList.length > 0) {
+                    const isYellow = currentDetailTagType === 'YELLOW';
+                    container.appendChild(createFilterDropdown('filter_category', '📋 KATEGORI', categoriesList, 'category', filterSelections.category, isYellow));
+                } else {
+                    const dummyDiv = document.createElement('div');
+                    dummyDiv.className = 'filter-item';
+                    dummyDiv.innerHTML = `<div class="filter-label">📋 KATEGORI</div><div class="w-full px-3 py-2.5 rounded-lg border-2 border-slate-200 bg-slate-50 text-slate-400 text-sm">Tidak ada data</div>`;
+                    container.appendChild(dummyDiv);
+                }
+                
                 document.addEventListener('click', function(e) {
                     if(!e.target.closest('.filter-dropdown')) {
                         document.querySelectorAll('.filter-dropdown-content').forEach(c => c.classList.remove('show'));
@@ -498,8 +484,11 @@
             }
             
             window.resetAllFilters = function() {
-                filterSelections = { machine: [], building: [], category: [], status: [] };
-                renderFilterCheckboxes();
+                filterSelections = { machine: [], building: [], category: [] };
+                const fromEl = document.getElementById('detail-date-from'); if(fromEl) fromEl.value = '';
+                const toEl = document.getElementById('detail-date-to'); if(toEl) toEl.value = '';
+                const statusEl = document.getElementById('detail-status'); if(statusEl) statusEl.value = '';
+                renderFilterRow();
                 applyDetailFilter();
                 showToast('Semua filter direset', 'success');
             };
@@ -529,11 +518,10 @@
                     }
                     const detailPage = document.getElementById('page-detail');
                     if(detailPage && !detailPage.classList.contains('hidden')) {
-                        renderFilterCheckboxes();
+                        renderFilterRow();
                         await applyDetailFilter();
                     }
                     updateLastSyncTime();
-                    
                     updateMachineDropdown();
                     updateBuildingDropdown();
                 }catch(e){ console.error(e); showToast('GAGAL REFRESH DATA','error'); }
@@ -567,17 +555,16 @@
             window.applyDashboardDateFilter = function(){ const filtered=getFilteredDataByDate(); updateDashboardCardsWithData(filtered); renderOperatorStackedBars(filtered); renderEngineeringBars(filtered); renderMachineBars(filtered); renderBuildingBars(filtered); showToast('Filter tanggal diterapkan','success'); };
             
             window.applyDetailFilter = async function(){
-                const dateFrom=document.getElementById('detail-date-from')?.value||'', dateTo=document.getElementById('detail-date-to')?.value||'', statusSelect=document.getElementById('detail-status')?.value||'';
-                let filtered=allData.filter(t=>t.tag_type===currentDetailTagType);
+                const dateFrom = document.getElementById('detail-date-from')?.value || '';
+                const dateTo = document.getElementById('detail-date-to')?.value || '';
+                const statusSelect = document.getElementById('detail-status')?.value || '';
+                let filtered = allData.filter(t => t.tag_type === currentDetailTagType);
                 
-                // Filter tanggal
-                if(dateFrom&&dateTo) filtered=filtered.filter(t=>t.date>=dateFrom&&t.date<=dateTo);
-                else { if(dateFrom) filtered=filtered.filter(t=>t.date>=dateFrom); if(dateTo) filtered=filtered.filter(t=>t.date<=dateTo); }
+                if(dateFrom && dateTo) filtered = filtered.filter(t => t.date >= dateFrom && t.date <= dateTo);
+                else { if(dateFrom) filtered = filtered.filter(t => t.date >= dateFrom); if(dateTo) filtered = filtered.filter(t => t.date <= dateTo); }
                 
-                // Filter status dari dropdown biasa
-                if(statusSelect && currentDetailTagType!=='WHITE') filtered=filtered.filter(t=>t.status===statusSelect);
+                if(statusSelect && currentDetailTagType !== 'WHITE') filtered = filtered.filter(t => t.status === statusSelect);
                 
-                // Filter checkbox untuk mesin/bangunan
                 if (currentDetailTagType === 'RED' && filterSelections.machine.length > 0) {
                     filtered = filtered.filter(t => filterSelections.machine.includes(t.machine));
                 }
@@ -585,30 +572,24 @@
                     filtered = filtered.filter(t => filterSelections.building.includes(t.machine));
                 }
                 
-                // Filter kategori
                 if (filterSelections.category.length > 0) {
                     filtered = filtered.filter(t => filterSelections.category.includes(t.risk));
                 }
                 
-                // Filter status dari checkbox (jika ada)
-                if (filterSelections.status.length > 0 && currentDetailTagType !== 'WHITE') {
-                    filtered = filtered.filter(t => filterSelections.status.includes(t.status));
-                }
-                
-                // SORT ASCENDING berdasarkan tanggal (dari lama ke baru)
+                // ASCENDING by date
                 filtered.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
                 
                 currentDetailFiltered = filtered; 
                 renderDetailTable(); 
-                showToast(`Menampilkan ${filtered.length} data (urut tanggal ascending)`, 'success');
+                showToast(`Menampilkan ${filtered.length} data (urut ascending)`, 'success');
             };
             
             window.resetDetailFilter = function(){ 
-                const fromEl = document.getElementById('detail-date-from'); if(fromEl) fromEl.value='';
-                const toEl = document.getElementById('detail-date-to'); if(toEl) toEl.value='';
-                const statusEl = document.getElementById('detail-status'); if(statusEl) statusEl.value='';
-                filterSelections = { machine: [], building: [], category: [], status: [] };
-                renderFilterCheckboxes();
+                filterSelections = { machine: [], building: [], category: [] };
+                const fromEl = document.getElementById('detail-date-from'); if(fromEl) fromEl.value = '';
+                const toEl = document.getElementById('detail-date-to'); if(toEl) toEl.value = '';
+                const statusEl = document.getElementById('detail-status'); if(statusEl) statusEl.value = '';
+                renderFilterRow();
                 applyDetailFilter(); 
             };
             
@@ -644,16 +625,10 @@
             
             window.showDetailPage = function(tagType){ 
                 currentDetailTagType=tagType; 
-                const fromEl = document.getElementById('detail-date-from'); if(fromEl) fromEl.value='';
-                const toEl = document.getElementById('detail-date-to'); if(toEl) toEl.value='';
-                const statusEl = document.getElementById('detail-status'); if(statusEl) statusEl.value='';
-                filterSelections = { machine: [], building: [], category: [], status: [] };
+                filterSelections = { machine: [], building: [], category: [] };
                 const titleMap={'RED':'🔴 RED TAG DETAIL - MESIN','WHITE':'⚪ WHITE TAG DETAIL - MESIN','BLUE':'🔵 BLUE TAG DETAIL - BANGUNAN','YELLOW':'🟡 YELLOW TAG DETAIL - BANGUNAN (K3)'}; 
                 const titleEl = document.getElementById('detail-title'); if(titleEl) titleEl.innerHTML=titleMap[tagType]; 
-                const statusContainer=document.getElementById('detail-status-container'); 
-                if(tagType==='WHITE'){ if(statusContainer) statusContainer.style.display='none'; } 
-                else { if(statusContainer) statusContainer.style.display='block'; } 
-                renderFilterCheckboxes();
+                renderFilterRow();
                 applyDetailFilter(); 
                 showPage('detail'); 
                 const backBtn = document.getElementById('back-to-dashboard-btn'); if(backBtn) backBtn.classList.remove('hidden'); 
@@ -672,15 +647,45 @@
             
             window.exportDetailToExcel = function(){ 
                 if(!currentDetailFiltered.length){ showToast('TIDAK ADA DATA','error'); return; } 
-                let csv=""; 
-                if(currentDetailTagType==='WHITE') csv="Tanggal,Operator,Mesin,Abnormalitas,Action,Kategori\n"+currentDetailFiltered.map(t=>`"${t.date?.split('T')[0]}","${t.initial}","${t.machine}","${t.abnormality||''}","${t.action||''}","${t.risk||''}"`).join("\n"); 
-                else csv="Tanggal,"+(currentDetailTagType==='RED'?"Mesin":"Bangunan")+",Kategori,Operator,Abnormalitas,FotoBefore,Action,FotoAfter,NoWR,Status,ClosedBy,TglUpdate\n"+currentDetailFiltered.map(t=>`"${t.date?.split('T')[0]}","${t.machine}","${(t.risk||'').replace(/_/g, ' ')}","${t.initial}","${t.abnormality||''}","${t.foto_before?'Ada':'-'}","${t.progress_note||''}","${t.foto_after?'Ada':'-'}","${t.wr_number||''}","${t.status||''}","${t.closed_by||''}","${t.updated_at?.split('T')[0]||''}"`).join("\n"); 
-                const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}); 
-                const link=document.createElement("a"); 
-                link.href=URL.createObjectURL(blob); 
-                link.download=`${currentDetailTagType}_TAG_${new Date().toISOString().split('T')[0]}.csv`; 
-                link.click(); 
-                showToast('EXPORT BERHASIL','success'); 
+                
+                let headers = [];
+                let rows = [];
+                
+                if(currentDetailTagType==='WHITE'){
+                    headers = ['Tanggal', 'Operator', 'Mesin', 'Abnormalitas', 'Action', 'Kategori'];
+                    rows = currentDetailFiltered.map(t => [
+                        t.date?.split('T')[0] || '-',
+                        t.initial || '-',
+                        t.machine || '-',
+                        t.abnormality || '-',
+                        t.action || '-',
+                        t.risk || '-'
+                    ]);
+                } else {
+                    headers = ['Tanggal', currentDetailTagType==='RED'?'Mesin':'Bangunan', 'Kategori', 'Operator', 'Abnormalitas', 'Foto Before', 'Action', 'Foto After', 'No WR', 'Status', 'Closed By', 'Tgl Update'];
+                    rows = currentDetailFiltered.map(t => [
+                        t.date?.split('T')[0] || '-',
+                        t.machine || '-',
+                        (t.risk || '-').replace(/_/g, ' '),
+                        t.initial || '-',
+                        t.abnormality || '-',
+                        t.foto_before ? 'Ada' : '-',
+                        t.progress_note || '-',
+                        t.foto_after ? 'Ada' : '-',
+                        t.wr_number || '-',
+                        t.status || '-',
+                        t.closed_by || '-',
+                        t.updated_at?.split('T')[0] || '-'
+                    ]);
+                }
+                
+                const wsData = [headers, ...rows];
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                ws['!cols'] = headers.map(() => ({wch: 20}));
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, `${currentDetailTagType}_TAG`);
+                XLSX.writeFile(wb, `${currentDetailTagType}_TAG_${new Date().toISOString().split('T')[0]}.xlsx`);
+                showToast('EXPORT EXCEL BERHASIL', 'success');
             };
             
             window.openUpdateModal = function(tagId){ 
