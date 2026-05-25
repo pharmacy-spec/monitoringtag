@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TAG MONITORING - OPTIMIZED</title>
+    <title>TAG MONITORING - FIXED</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -210,9 +210,9 @@
                     <div class="glass-card rounded-xl overflow-hidden">
                         <div class="table-container">
                             <table class="w-full text-sm">
-                                <thead class="bg-slate-50/50 sticky top-0"><tr id="detail-table-header">   </tr></thead>
+                                <thead class="bg-slate-50/50 sticky top-0"><tr id="detail-table-header">    </thead>
                                 <tbody id="detail-table-body"></tbody>
-                            </table>
+                             </table>
                         </div>
                     </div>
                 </div>
@@ -230,8 +230,8 @@
     <script>
         (function(){
             // 🔧 🔧 🔧 GANTI DENGAN PROJECT SUPABASE BARU ANDA 🔧 🔧 🔧
-            const SUPABASE_URL = 'https://znmxwlnbghffytpmnrsm.supabase.co';  // <-- GANTI INI
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpubXh3bG5iZ2hmZnl0cG1ucnNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTQwMDMsImV4cCI6MjA5NTIzMDAwM30.CwJIkskGWMlYEfr4QmciPUV-XUDQLnO2E6gGXBZ4xVc';  // <-- GANTI INI
+            const SUPABASE_URL = 'https://znmxwlnbghffytpmnrsm.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpubXh3bG5iZ2hmZnl0cG1ucnNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2NTQwMDMsImV4cCI6MjA5NTIzMDAwM30.CwJIkskGWMlYEfr4QmciPUV-XUDQLnO2E6gGXBZ4xVc';
             
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             const CACHE_TTL = 60000;
@@ -250,11 +250,12 @@
             async function fetchData(table, key, force=false){
                 if(isCacheValid(key) && !force) return cache[key].data;
                 try {
-                    let query = supabase.from(table).select('*');
+                    let query;
                     if(table === 'tags') {
-                        query = supabase.from('tags').select('id,date,tag_type,status,initial,risk,machine,location,created_at,updated_at,wr_number,progress_note,closed_by').limit(200).order('created_at', {ascending: false});
+                        // 🔥 FIX: Ambil SEMUA kolom termasuk abnormality, impact, action
+                        query = supabase.from('tags').select('*').limit(500).order('created_at', {ascending: false});
                     } else {
-                        query = query.order('created_at', {ascending: false});
+                        query = supabase.from(table).select('*').order('created_at', {ascending: false});
                     }
                     const {data,error} = await query;
                     if(error) throw error;
@@ -462,8 +463,27 @@
                     tbody.innerHTML = currentDetailFiltered.slice(0,200).map(t => { const riskClass = t.risk==='SAFETY'?'bg-red-100 text-red-700':t.risk==='QUALITY'?'bg-blue-100 text-blue-700':t.risk==='PRODUCTIVITY'?'bg-amber-100 text-amber-700':t.risk==='5R'?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-700'; return `<tr class="hover:bg-slate-50"><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-medium">${t.date?t.date.split('T')[0]:'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold">${t.initial||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs">${t.machine||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><div class="break-word text-xs" style="max-width:280px">${t.abnormality||'-'}</div></td><td class="px-2 sm:px-4 py-2 sm:py-3"><div class="break-word text-xs" style="max-width:200px">${t.action||'-'}</div></td><td class="px-2 sm:px-4 py-2 sm:py-3"><span class="px-2 py-1 rounded-full text-[8px] sm:text-xs font-semibold uppercase inline-block ${riskClass}">${t.risk||'-'}</span></td></tr>`; }).join('');
                 } else {
                     thead.innerHTML = `<th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">TANGGAL</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">${currentDetailTagType==='RED'?'MESIN':'BANGUNAN'}</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">KATEGORI</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">OPERATOR</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">ABNORMALITAS</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">FOTO BEFORE</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">ACTION</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">FOTO AFTER</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">NO WR</th><th class="px-2 sm:px-4 py-3 text-left uppercase font-bold text-[10px] sm:text-xs">STATUS</th><th class="px-2 sm:px-4 py-3 text-center uppercase font-bold text-[10px] sm:text-xs">AKSI / CLOSED BY</th><th class="px-2 sm:px-4 py-3 text-center uppercase font-bold text-[10px] sm:text-xs">TGL UPDATE</th>`;
-                    if(!currentDetailFiltered.length){ tbody.innerHTML = `<tr><td colspan="12" class="px-2 sm:px-4 py-8 text-center text-slate-500 uppercase text-xs">TIDAK ADA ${currentDetailTagType} TAG</td></tr>`; return; }
-                    tbody.innerHTML = currentDetailFiltered.slice(0,200).map(tag => { const statusColor = tag.status==='OPEN'?'bg-red-100 text-red-700':tag.status==='ON PROGRESS'?'bg-amber-100 text-amber-700':'bg-emerald-100 text-emerald-700'; let actionBtn = ''; if(tag.status==='CLOSED'){ actionBtn = `<div class="${currentDetailTagType==='RED'?'closed-by-badge':'blue-closed-by-badge'}"><span>✓</span><span>${tag.closed_by||'Unknown'}</span></div>`; } else if(!tag.wr_number){ if(userRole==='operator'||userRole==='admin') actionBtn = `<button onclick="openUpdateModal('${tag.id}')" class="px-2 sm:px-3 py-1 bg-blue-500 text-white rounded-lg text-[10px] sm:text-xs font-semibold uppercase hover:bg-blue-600 transition whitespace-nowrap">INPUT WR</button>`; else actionBtn = '<span class="text-xs text-slate-500">-</span>'; } else { if(((userRole==='engineering'||userRole==='admin') && currentDetailTagType==='RED') || ((userRole==='utility'||userRole==='admin') && currentDetailTagType==='BLUE')){ actionBtn = `<button onclick="openUpdateModal('${tag.id}')" class="px-2 sm:px-3 py-1 bg-blue-500 text-white rounded-lg text-[10px] sm:text-xs font-semibold uppercase hover:bg-blue-600 transition whitespace-nowrap">UPDATE</button>`; } else { actionBtn = '<span class="text-xs text-slate-500">-</span>'; } } const fb = tag.foto_before ? `<img src="${tag.foto_before}" class="photo-thumbnail" onclick="openPhotoModal('${tag.foto_before}')" title="Klik untuk perbesar">` : '<span class="text-xs text-slate-400">-</span>'; const fa = tag.foto_after ? `<img src="${tag.foto_after}" class="photo-thumbnail" onclick="openPhotoModal('${tag.foto_after}')" title="Klik untuk perbesar">` : '<span class="text-xs text-slate-400">-</span>'; const riskClass = tag.risk==='SAFETY'?'bg-red-100 text-red-700':tag.risk==='QUALITY'?'bg-blue-100 text-blue-700':tag.risk==='PRODUCTIVITY'?'bg-amber-100 text-amber-700':tag.risk==='5R'?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-700'; return `<tr class="hover:bg-slate-50"><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-medium">${tag.date?tag.date.split('T')[0]:'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold">${tag.machine||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><span class="px-2 py-1 rounded-full text-[8px] sm:text-xs font-semibold uppercase inline-block ${riskClass}">${tag.risk||'-'}</span></td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold">${tag.initial||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><div class="break-word text-xs" style="max-width:280px">${tag.abnormality||'-'}</div></td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center">${fb}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><div class="break-word text-xs" style="max-width:200px">${tag.progress_note||'-'}</div></td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center">${fa}</td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-mono">${tag.wr_number||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><span class="px-2 py-1 rounded-full text-[8px] sm:text-xs font-semibold uppercase inline-block ${statusColor}">${tag.status||'-'}</span></td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center">${actionBtn}</td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center font-mono text-xs text-slate-600">${tag.updated_at?tag.updated_at.split('T')[0]:'-'}</td></tr>`; }).join('');
+                    if(!currentDetailFiltered.length){ tbody.innerHTML = `<tr><td colspan="12" class="px-2 sm:px-4 py-8 text-center text-slate-500 uppercase text-xs">TIDAK ADA ${currentDetailTagType} TAG<td></tr>`; return; }
+                    tbody.innerHTML = currentDetailFiltered.slice(0,200).map(tag => { 
+                        const statusColor = tag.status==='OPEN'?'bg-red-100 text-red-700':tag.status==='ON PROGRESS'?'bg-amber-100 text-amber-700':'bg-emerald-100 text-emerald-700'; 
+                        let actionBtn = ''; 
+                        if(tag.status==='CLOSED'){ 
+                            actionBtn = `<div class="${currentDetailTagType==='RED'?'closed-by-badge':'blue-closed-by-badge'}"><span>✓</span><span>${tag.closed_by||'Unknown'}</span></div>`; 
+                        } else if(!tag.wr_number){ 
+                            if(userRole==='operator'||userRole==='admin') actionBtn = `<button onclick="openUpdateModal('${tag.id}')" class="px-2 sm:px-3 py-1 bg-blue-500 text-white rounded-lg text-[10px] sm:text-xs font-semibold uppercase hover:bg-blue-600 transition whitespace-nowrap">INPUT WR</button>`; 
+                            else actionBtn = '<span class="text-xs text-slate-500">-</span>'; 
+                        } else { 
+                            if(((userRole==='engineering'||userRole==='admin') && currentDetailTagType==='RED') || ((userRole==='utility'||userRole==='admin') && currentDetailTagType==='BLUE')){ 
+                                actionBtn = `<button onclick="openUpdateModal('${tag.id}')" class="px-2 sm:px-3 py-1 bg-blue-500 text-white rounded-lg text-[10px] sm:text-xs font-semibold uppercase hover:bg-blue-600 transition whitespace-nowrap">UPDATE</button>`; 
+                            } else { 
+                                actionBtn = '<span class="text-xs text-slate-500">-</span>'; 
+                            } 
+                        } 
+                        const fb = tag.foto_before ? `<img src="${tag.foto_before}" class="photo-thumbnail" onclick="openPhotoModal('${tag.foto_before}')" title="Klik untuk perbesar">` : '<span class="text-xs text-slate-400">-</span>'; 
+                        const fa = tag.foto_after ? `<img src="${tag.foto_after}" class="photo-thumbnail" onclick="openPhotoModal('${tag.foto_after}')" title="Klik untuk perbesar">` : '<span class="text-xs text-slate-400">-</span>'; 
+                        const riskClass = tag.risk==='SAFETY'?'bg-red-100 text-red-700':tag.risk==='QUALITY'?'bg-blue-100 text-blue-700':tag.risk==='PRODUCTIVITY'?'bg-amber-100 text-amber-700':tag.risk==='5R'?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-700'; 
+                        return `<tr class="hover:bg-slate-50"><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-medium">${tag.date?tag.date.split('T')[0]:'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold">${tag.machine||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><span class="px-2 py-1 rounded-full text-[8px] sm:text-xs font-semibold uppercase inline-block ${riskClass}">${tag.risk||'-'}</span></td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-semibold">${tag.initial||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><div class="break-word text-xs" style="max-width:280px">${tag.abnormality||'-'}</div></td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center">${fb}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><div class="break-word text-xs" style="max-width:200px">${tag.progress_note||'-'}</div></td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center">${fa}</td><td class="px-2 sm:px-4 py-2 sm:py-3 uppercase text-[10px] sm:text-xs font-mono">${tag.wr_number||'-'}</td><td class="px-2 sm:px-4 py-2 sm:py-3"><span class="px-2 py-1 rounded-full text-[8px] sm:text-xs font-semibold uppercase inline-block ${statusColor}">${tag.status||'-'}</span></td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center">${actionBtn}</td><td class="px-2 sm:px-4 py-2 sm:py-3 text-center font-mono text-xs text-slate-600">${tag.updated_at?tag.updated_at.split('T')[0]:'-'}</td></tr>`; 
+                    }).join('');
                 }
             }
             
